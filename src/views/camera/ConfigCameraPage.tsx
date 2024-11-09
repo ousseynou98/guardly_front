@@ -28,53 +28,103 @@ const ConfigCamera = ({ cameraId }: { cameraId: string }) => {
   const sketchCanvasRef = useRef<any>(null); // Ref pour ReactSketchCanvas
 
   // Fetch camera details and WebSocket for live stream
+  // useEffect(() => {
+  //   const fetchCameraDetails = async () => {
+  //     const response = await fetch(`http://127.0.0.1:8000/cameras/${cameraId}`);
+  //     const data: CameraDetails = await response.json();
+  //     setCameraDetails(data);
+
+  //     // Charger l'image capturée et les zones de détection si elles existent
+  //     if (data.captured_image) {
+  //       setCapturedImage(data.captured_image);
+  //       setIsImageCaptured(true);
+
+  //       // Charger les zones de détection sur le canvas si elles sont présentes
+  //       if (data.zones_detection) {
+  //         sketchCanvasRef.current.loadPaths(data.zones_detection.drawingData);
+  //       }
+  //     }
+  //   };
+
+  //   fetchCameraDetails();
+
+  //   const ws = new WebSocket(`ws://127.0.0.1:8000/camera/${cameraId}/live`);
+  //   ws.onmessage = event => {
+  //     if (event.data instanceof Blob && imgRef.current && !isImageCaptured) {
+  //       const url = URL.createObjectURL(event.data);
+  //       imgRef.current.src = url; // Affiche le flux en direct
+  //     } else {
+  //       try {
+  //         const message = JSON.parse(event.data);
+  //         if (message.motion_detected) {
+  //           setMotionDetected(true);
+  //           setTimeout(() => setMotionDetected(false), 1000); // Flash pour 1 seconde
+  //         }
+  //       } catch (error) {
+  //         console.error("Error parsing JSON message:", error);
+  //       }
+  //     }
+  //   };
+
+  //   const timer = setInterval(() => {
+  //     setTime(new Date().toLocaleTimeString());
+  //   }, 1000); // Mise à jour de l'heure chaque seconde
+
+  //   return () => {
+  //     ws.close();
+  //     clearInterval(timer);
+  //   };
+  // }, [cameraId, isImageCaptured]);
   useEffect(() => {
     const fetchCameraDetails = async () => {
       const response = await fetch(`http://127.0.0.1:8000/cameras/${cameraId}`);
       const data: CameraDetails = await response.json();
       setCameraDetails(data);
-
-      // Charger l'image capturée et les zones de détection si elles existent
+  
+      // Load captured image and detection zones if they exist
       if (data.captured_image) {
         setCapturedImage(data.captured_image);
         setIsImageCaptured(true);
-
-        // Charger les zones de détection sur le canvas si elles sont présentes
-        if (data.zones_detection) {
-          sketchCanvasRef.current.loadPaths(data.zones_detection.drawingData);
-        }
+  
+        // Wait for the component to mount before loading paths
+        setTimeout(() => {
+          if (data.zones_detection && sketchCanvasRef.current) {
+            sketchCanvasRef.current.loadPaths(data.zones_detection.drawingData);
+          }
+        }, 100); // Adjust delay as needed
       }
     };
-
+  
     fetchCameraDetails();
-
+  
     const ws = new WebSocket(`ws://127.0.0.1:8000/camera/${cameraId}/live`);
     ws.onmessage = event => {
       if (event.data instanceof Blob && imgRef.current && !isImageCaptured) {
         const url = URL.createObjectURL(event.data);
-        imgRef.current.src = url; // Affiche le flux en direct
+        imgRef.current.src = url; // Display live feed
       } else {
         try {
           const message = JSON.parse(event.data);
           if (message.motion_detected) {
             setMotionDetected(true);
-            setTimeout(() => setMotionDetected(false), 1000); // Flash pour 1 seconde
+            setTimeout(() => setMotionDetected(false), 1000); // Flash for 1 second
           }
         } catch (error) {
           console.error("Error parsing JSON message:", error);
         }
       }
     };
-
+  
     const timer = setInterval(() => {
       setTime(new Date().toLocaleTimeString());
-    }, 1000); // Mise à jour de l'heure chaque seconde
-
+    }, 1000); // Update time every second
+  
     return () => {
       ws.close();
       clearInterval(timer);
     };
   }, [cameraId, isImageCaptured]);
+  
 
   // Capture image from live stream
   const handleCaptureImage = () => {
